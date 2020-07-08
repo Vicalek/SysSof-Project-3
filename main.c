@@ -120,7 +120,7 @@ void getToken()
         tokenIndex++;
     }
 }
-// searches if an identifier is in the symbol table already, returns a 1 if match found
+// searches if an identifier is in the symbol table already, returns index if match found
 int checkTable(struct token token)
 {
     if (sizeOfSymbolTable == 1)
@@ -131,17 +131,20 @@ int checkTable(struct token token)
     {
         if ( strcmp(token.name, symbolTable[i].name) == 0 ) // if a match is found
         {
-            return 1;
+            return i;
         }
     }
     return 0; // no match has been found
 }
 void block()
 {
+    // TA says "keep track of the number of variables"
+    int numVars = 0;
+
     if ( currToken.ID == constsym ) // check for a constant declaration
         do  // we have at lest 1 constant declaration, so do it at lest once
         {
-            getToken();
+            getToken(); // *if theres a problem around here we, I think could try moving getToken outside of the do/while loop*
             // this next token must be an identifier
             if ( currToken.ID != identsym )
             {
@@ -149,20 +152,23 @@ void block()
             }
             // we check if this identifier is in the symbol table already
 
-            // checkTable(currToken);
-            // checkTable will take in the current token and check it against the table, returns 1 if it is found
-            if ( checkTable(currToken) == 1 )
+            // checkTable will take in the current token and check it against the symbol table, returns index if it is found,
+            // returns 0 if no match found
+            if ( checkTable(currToken) != 0 )
             {
                  //error(); // duplicate identifier!
             }
-            // working here <------------------------------------------------------
+            else
+            {
+                // this is a new identifier!
+                strcpy( symbolTable[sizeOfSymbolTable].name, currToken.name );
+                symbolTable[sizeOfSymbolTable].kind = 1; // (kind 1 = const)
+            }
 
-
-
-            // update token
+            // ok now that the table knows the name of this identifier, we update token again
             getToken();
 
-            // the next token has to be an equals sign
+            // the next token *has* to be an equals sign
             if ( currToken.ID != eqsym )
             {
                 // error();
@@ -171,22 +177,61 @@ void block()
             // continue if it was an equal sign
             getToken();
 
-            // this next token has to be a digit
+            // this next token *has* to be a digit
             if ( currToken.ID != numbersym )
             {
                 // error();
             }
-            // if it is a digit
+            // if it is a digit, we can input our new const's value into the symbol table
+            symbolTable[sizeOfSymbolTable].value = currToken.value;
+            // there is no level, address, or mark to store in the symbol table for this one so
+            // we can just go ahead and officially say the symbol table is bigger
+            sizeOfSymbolTable++;
 
+            // ok, next token
+            getToken();
+            // if its a comma it'll start this loop again, if not we must check for a semicolon
         }
         while (currToken.ID == commasym);//there could be multiple declared
+        if ( currToken != semicolonsym )// constant declarations *have* to end with a semicolon
+        {
+            //error();
+        }
+        // if it does end in a semicolon, we can move on
+        getToken();
 
     if ( currToken.ID == varsym ) // check for a variable declaration
+        numVars++;
         do
         {
+            getToken();
+            // following a var, we must have an identifier symbol
+            if ( currToken != identsym )
+            {
+                // error();
+            }
+            // if it is an identifier, we check if one such exists in the symbol table already
+            if ( checkTable(currToken) != 0 )
+            {
+                // error(); // variable with that name already exists!
+            }
+            // if no variable with that name exists, we add it to the table:
+            strcpy( symbolTable[sizeOfSymbolTable], currToken.name );
+            symbolTable[sizeOfSymbolTable].kind = 2; // (kind 2 = variable)
+            symbolTable[sizeOfSymbolTable].address = currAddress;
+            currAddress++; // increment current address
+            // there is no value to input just yet, there is no level to input, no mark either so
+            // we can officially grow the symbol table
+            sizeOfSymbolTable++;
 
         }
-        while ()// there could be multiple variables declared
+        while (currToken.ID == commasym)// similarly to above, there could be multiple variables declared
+        if ( currToken != semicolonsym )// variable declarations *have* to end with a semicolon
+        {
+            //error();
+        }
+        // if it does end in a semicolon, we can move on
+        getToken();
 
     statement();
 }
