@@ -30,7 +30,7 @@ int main()
     /*
     notes from looking over the instructions and watching the TA's video, I am still not 100% confidant in what it wants so we have to go over that proto
 
-        a big difference between project 2 and project 3 is that there are no pros in
+        a big difference between project 2 and project 3 is that there are no procs in
         project 3 (thank goodness! basically, no functions)
 
         another difference is that the open brackets and closing brackets+period becoming
