@@ -138,6 +138,9 @@ int checkTable(struct token token)
 }
 void block()
 {
+    // all the inputs from HW1 start with Jump to instruction 0
+    emit(JMP, 0, 0);
+
     // TA says "keep track of the number of variables"
     int numVars = 0;
 
@@ -199,7 +202,7 @@ void block()
         }
         // if it does end in a semicolon, we can move on
         getToken();
-
+//-----------------VARSYM------------------VARSYM--------------------VARSYM---------------------
     if ( currToken.ID == varsym ) // check for a variable declaration
         numVars++;
         do
@@ -233,12 +236,13 @@ void block()
         // if it does end in a semicolon, we can move on
         getToken();
 
+    // after const and vars we increment the stack pointer depending on how many vars we put i think?
+    emit(INC, 0, currAddress);
+
+
     statement();
 }
-void con-declaration()
-{
 
-}
 void statement()
 {
 
