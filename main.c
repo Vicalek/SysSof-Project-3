@@ -16,9 +16,9 @@ struct symbol
 {
     int kind; 		// const = 1, var = 2, proc = 3
     char name[10];	// name up to 11 chars
-	int val; 		// number (ASCII value)
+	int value; 		// number (ASCII value). was "val". idk what it means by it has to be an ascii value its already a number
 	int level; 		// L level, in this project will basically always be 0
-	int addr; 		// M address
+	int address; 		// M address. was "addr"
 	int mark;		// to indicate unavailable or delete d
 }symbol;
 int currAddress=4; // addresses here start at 4 in this project because we have 3 things in the AR already
@@ -61,7 +61,7 @@ void emit(int op, int level, int address)
         Code[currentCodeIndex].L = level;
         Code[currentCodeIndex].M = address;
 
-        currentCodeIndex++
+        currentCodeIndex++;
     }
 }
 //---->end of stuff for code generation part of the project<----//
@@ -85,29 +85,28 @@ typedef enum {
 nulsym = 1, identsym = 2, numbersym = 3, plussym = 4, minussym = 5,
 multsym = 6,  slashsym = 7, oddsym = 8, eqsym = 9, neqsym = 10, lessym = 11, leqsym = 12,
 gtrsym = 13, geqsym = 14, lparentsym = 15, rparentsym = 16, commasym = 17, semicolonsym = 18,
-periodsym = 19, becomessym = 20, lbracesym = 21, rbracesym = 22, ifsym = 23, thensym = 24,
+periodsym = 19, becomessym = 20, lbracesym = 21, beginsym = 21, rbracesym = 22, endsym=22, ifsym = 23, thensym = 24,
 whilesym = 25, dosym = 26, callsym = 27, constsym = 28, varsym = 29, procsym = 30, writesym = 31,
 readsym = 32, elsesym = 33, colonsym = 34
 }token_type;
-/* TEST:
-var a, b;
-{
-	a:=b+1;
-}.
 
-Lexeme List
-29  2 a  17  2 b  18  21  2 a  20  2 b  4  3  18  22  19
-
-length: 15 (14 tokens + 1 ID=0)
-*/
 //----->end of stuff from project 2<-----//
 
 // countTokens();
-int numTokens; //probably need to run the token struct through a function that does counter++ until it hits ID=0 to get this number
+int numTokens = 0; //probably need to run the token struct through a function that does counter++ until it hits ID=0 to get this number
 int tokenIndex = 0; // this is the index for the token struct
-struct token tokens[numTokens];
+struct token tokens[100]; //100 for now...
 struct token currToken;
 
+int countTokens()
+{
+    int count = 0;
+    for ( int i = 0 ; tokens[i].ID != 0; i++ )
+    {
+        count++;
+    }
+    return count;
+}
 void getToken()
 {
     if ( tokenIndex == numTokens )
@@ -138,13 +137,16 @@ int checkTable(struct token token)
 }
 void block()
 {
+    printf("in block\n");
     // all the inputs from HW1 start with Jump to instruction 0
     emit(JMP, 0, 0);
 
     // TA says "keep track of the number of variables"
     int numVars = 0;
 
-    if ( currToken.ID == constsym ) // check for a constant declaration
+    if ( currToken.ID == constsym )// check for a constant declaration
+    {
+        printf("in constsym\n");
         do  // we have at lest 1 constant declaration, so do it at lest once
         {
             getToken(); // *if theres a problem around here we, I think could try moving getToken outside of the do/while loop*
@@ -196,20 +198,23 @@ void block()
             // if its a comma it'll start this loop again, if not we must check for a semicolon
         }
         while (currToken.ID == commasym);//there could be multiple declared
-        if ( currToken != semicolonsym )// constant declarations *have* to end with a semicolon
+        if ( currToken.ID != semicolonsym )// constant declarations *have* to end with a semicolon
         {
             //error();
         }
         // if it does end in a semicolon, we can move on
         getToken();
-//-----------------VARSYM------------------VARSYM--------------------VARSYM---------------------
+    }//end of constsym
+
     if ( currToken.ID == varsym ) // check for a variable declaration
+    {
+        printf("in varsym\n");
         numVars++;
         do
         {
             getToken();
             // following a var, we must have an identifier symbol
-            if ( currToken != identsym )
+            if ( currToken.ID != identsym )
             {
                 // error();
             }
@@ -219,7 +224,7 @@ void block()
                 // error(); // variable with that name already exists!
             }
             // if no variable with that name exists, we add it to the table:
-            strcpy( symbolTable[sizeOfSymbolTable], currToken.name );
+            strcpy( symbolTable[sizeOfSymbolTable].name, currToken.name );
             symbolTable[sizeOfSymbolTable].kind = 2; // (kind 2 = variable)
             symbolTable[sizeOfSymbolTable].address = currAddress;
             currAddress++; // increment current address
@@ -228,24 +233,24 @@ void block()
             sizeOfSymbolTable++;
 
         }
-        while (currToken.ID == commasym)// similarly to above, there could be multiple variables declared
-        if ( currToken != semicolonsym )// variable declarations *have* to end with a semicolon
+        while (currToken.ID == commasym);// similarly to above, there could be multiple variables declared
+        if ( currToken.ID != semicolonsym )// variable declarations *have* to end with a semicolon
         {
             //error();
         }
         // if it does end in a semicolon, we can move on
         getToken();
+    }//end of varsym
 
-    // after const and vars we increment the stack pointer depending on how many vars we put i think?
+    // after const and vars, we increment the stack pointer depending on how many vars we put i think?
     emit(INC, 0, currAddress);
-
 
     statement();
 }
 
 void statement()
 {
-
+    printf("in statement\n");
 }
 
 int main()
@@ -287,5 +292,42 @@ int main()
     */
 
 
+    /* TEST:
+    var a, b;
+    {
+        a:=b+1;
+    }.
+
+    Lexeme List
+    29  2 a  17  2 b  18  21  2 a  20  2 b  4  3  18  22  19
+
+    length: 15 (14 tokens + 1 ID=0)
+    */
+
+    tokens[0].ID = 29;
+    tokens[1].ID = 2;
+    strcpy(tokens[1].name, "a");
+    tokens[2].ID = 17;
+    tokens[3].ID = 2;
+    strcpy(tokens[3].name, "b");
+    tokens[4].ID = 18;
+    tokens[5].ID = 21;
+    tokens[6].ID = 2;
+    strcpy(tokens[6].name, "a");
+    tokens[7].ID = 20;
+    tokens[8].ID = 2;
+    strcpy(tokens[8].name, "b");
+    tokens[9].ID = 4;
+    tokens[10].ID = 3;
+    tokens[11].ID = 18;
+    tokens[12].ID = 22;
+    //tokens[13].ID = 19;
+    tokens[13].ID = 0;
+
+    numTokens = countTokens();
+    printf("numtokens: %d\n", numTokens);
+    getToken();
+    printf("starting token ID: %d\n", currToken.ID);
+    block();
 
 }
