@@ -329,17 +329,19 @@ void statement()
 
 void expression()
 {
-    if (currToken.ID == plussym || currToken.ID == minussym)
+    printf("in expression\n");
+    //if (currToken.ID == plussym || currToken.ID == minussym)
 
 }
 
 void term()
 {
+    printf("in term\n");
     // terms start with a factor
     factor();
 
     // terms can then have 0 or greater following factors separated by multiplication or division
-    while (currToken.ID == slashsym || currToken>ID == multsym) // while multiply or divide
+    while (currToken.ID == slashsym || currToken.ID == multsym) // while multiply or divide
     {
         int saveType = currToken.ID; // save if it was multiply or divide
         getToken();
@@ -357,6 +359,7 @@ void term()
 
 void factor()
 {
+    printf("in factor\n");
     if (currToken.ID == identsym)
     {
         int check = checkTable(currToken);
@@ -385,7 +388,7 @@ void factor()
         {
             error(1);
         }
-        expression()
+        expression();
         getToken();
         if (currToken.ID != lparentsym) // expressions in factors must be surrounded by ()
         {
@@ -397,6 +400,7 @@ void factor()
 
 void condition()
 {
+    printf("in condition\n");
     if (currToken.ID == oddsym) // "odd" expression
     {
         getToken();
@@ -422,7 +426,7 @@ void condition()
         switch (saveOP)
         {
             case eqsym:
-                emit(OPR, 0, EQL)
+                emit(OPR, 0, EQL);
                 break;
             case neqsym:
                 emit(OPR, 0, NEQ);
@@ -431,12 +435,12 @@ void condition()
                 emit(OPR, 0, LSS);
                 break;
             case leqsym:
-                emit(OPR, 0, LEQ)
+                emit(OPR, 0, LEQ);
                 break;
             case gtrsym:
                 emit(OPR, 0, GTR);
                 break;
-            case geqsym
+            case geqsym:
                 emit(OPR, 0, GEQ);
                 break;
         }
