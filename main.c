@@ -31,7 +31,7 @@ struct symbol symbolTable [100];
 //----->here is some stuff for the code generation part of the project<-----//
 typedef enum {
     LIT = 1, OPR = 2, LOD = 3, STO = 4, CAL = 5, INC = 6, JMP = 7, JPC = 8,
-    STO1 = 9, STO2 = 10, STO3 = 11
+    SIO1 = 9, SIO2 = 10, SIO3 = 11
 }opcodes;
 typedef enum{ // for when op=2
     RET = 0, NEG = 1, ADD = 2, SUB = 3, MUL = 4, DIV = 5, ODD = 6,
@@ -135,6 +135,15 @@ int checkTable(struct token token)
     }
     return 0; // no match has been found
 }
+void error(int errorType)
+{
+    switch (errorType)
+    {
+        case 1:
+            printf("there was an error\n");
+    }
+    exit(0);
+}
 void block()
 {
     printf("in block\n");
@@ -153,7 +162,7 @@ void block()
             // this next token must be an identifier
             if ( currToken.ID != identsym )
             {
-                // error();
+                error(1);
             }
             // we check if this identifier is in the symbol table already
 
@@ -161,7 +170,7 @@ void block()
             // returns 0 if no match found
             if ( checkTable(currToken) != 0 )
             {
-                 //error(); // duplicate identifier!
+                 error(1); // duplicate identifier!
             }
             else
             {
@@ -176,7 +185,7 @@ void block()
             // the next token *has* to be an equals sign
             if ( currToken.ID != eqsym )
             {
-                // error();
+                error(1);
             }
 
             // continue if it was an equal sign
@@ -185,7 +194,7 @@ void block()
             // this next token *has* to be a digit
             if ( currToken.ID != numbersym )
             {
-                // error();
+                error(1);
             }
             // if it is a digit, we can input our new const's value into the symbol table
             symbolTable[sizeOfSymbolTable].value = currToken.value;
@@ -200,7 +209,7 @@ void block()
         while (currToken.ID == commasym);//there could be multiple declared
         if ( currToken.ID != semicolonsym )// constant declarations *have* to end with a semicolon
         {
-            //error();
+            error(1);
         }
         // if it does end in a semicolon, we can move on
         getToken();
@@ -216,12 +225,12 @@ void block()
             // following a var, we must have an identifier symbol
             if ( currToken.ID != identsym )
             {
-                // error();
+                error(1);
             }
             // if it is an identifier, we check if one such exists in the symbol table already
             if ( checkTable(currToken) != 0 )
             {
-                // error(); // variable with that name already exists!
+                error(1); // variable with that name already exists!
             }
             // if no variable with that name exists, we add it to the table:
             strcpy( symbolTable[sizeOfSymbolTable].name, currToken.name );
@@ -231,12 +240,14 @@ void block()
             // there is no value to input just yet, there is no level to input, no mark either so
             // we can officially grow the symbol table
             sizeOfSymbolTable++;
+            // we can move on
+            getToken();
 
         }
         while (currToken.ID == commasym);// similarly to above, there could be multiple variables declared
         if ( currToken.ID != semicolonsym )// variable declarations *have* to end with a semicolon
         {
-            //error();
+            error(1);
         }
         // if it does end in a semicolon, we can move on
         getToken();
@@ -251,6 +262,186 @@ void block()
 void statement()
 {
     printf("in statement\n");
+
+    // here we use a switch statement instead of a bunch of if statements because the grammar
+    // separates types of statements with an OR symbol ("|"). Unlike block() which can enter
+    // constant declarations, variable declarations, and a statement at the same time
+    int ID = currToken.ID;
+
+    switch (ID)
+    {
+        case identsym:; // this semicolon is here because the immediate next line is a declaration which makes it funky for some reason
+            // if it is an identifier symbol, check if one with this name exists
+            int check = checkTable(currToken);
+            printf("in identsym \n");
+            if (check == 0) // if checkTable returned a 0, then the identifier doesn't exist
+            {
+                error(1);
+            }
+            // cannot update the contents of a constant (kind=1) or a procedure (kind=3)
+            if ( symbolTable[check].kind == 1 || symbolTable[check].kind == 3 )
+            {
+                error(1);
+            }
+
+            // the identifier exists, move on
+            getToken();
+
+            // the following token must be the becomes symbol (":=")
+            if ( currToken.ID != becomessym )
+            {
+                error(1);
+            }
+
+            // if it is the becomes symbol, move on
+            getToken();
+
+            // the following *must* be an expression
+            expression();
+
+            // emit() here, not sure what goes into it
+
+            break;
+
+        case beginsym:
+            break;
+
+        case ifsym:
+            break;
+
+        case whilesym:
+            break;
+
+        case readsym:
+            break;
+
+        case writesym:
+            break;
+
+        case endsym:
+            break;
+
+
+    }
+
+
+}//end statement
+
+void expression()
+{
+    if (currToken.ID == plussym || currToken.ID == minussym)
+
+}
+
+void term()
+{
+    // terms start with a factor
+    factor();
+
+    // terms can then have 0 or greater following factors separated by multiplication or division
+    while (currToken.ID == slashsym || currToken>ID == multsym) // while multiply or divide
+    {
+        int saveType = currToken.ID; // save if it was multiply or divide
+        getToken();
+
+        factor();
+
+        if (saveType == multsym)
+            emit(OPR, 0, MUL);
+        if (saveType == slashsym)
+            emit(OPR, 0, DIV);
+
+    }
+
+}
+
+void factor()
+{
+    if (currToken.ID == identsym)
+    {
+        int check = checkTable(currToken);
+
+        if (symbolTable[check].kind == 2) // if it's a variable
+        {
+            //emit(LOD)
+        }
+        if (symbolTable[check].kind == 1) // if it's a constant
+        {
+            //emit(LIT);
+        }
+        getToken();
+        return;
+    }
+    else if ( currToken.ID == numbersym )
+    {
+        //emit(LIT)
+        getToken();
+        return;
+    }
+    else // if the factor is (expression)
+    {
+        getToken();
+        if (currToken.ID != rparentsym) // expressions in factors must be surrounded by ()
+        {
+            error(1);
+        }
+        expression()
+        getToken();
+        if (currToken.ID != lparentsym) // expressions in factors must be surrounded by ()
+        {
+            error(1);
+        }
+        return;
+    }
+}
+
+void condition()
+{
+    if (currToken.ID == oddsym) // "odd" expression
+    {
+        getToken();
+        expression();
+        //emit(ODD);
+    }
+    else // expression  rel-op  expression
+    {
+        expression();
+
+        if (currToken.ID < 9 && currToken.ID > 14) // operators are 9 - 14
+        {
+            error(1); // this is not an operator
+        }
+
+        // save operator
+        int saveOP = currToken.ID;
+
+        getToken();
+
+        expression();
+
+        switch (saveOP)
+        {
+            case eqsym:
+                emit(OPR, 0, EQL)
+                break;
+            case neqsym:
+                emit(OPR, 0, NEQ);
+                break;
+            case lessym:
+                emit(OPR, 0, LSS);
+                break;
+            case leqsym:
+                emit(OPR, 0, LEQ)
+                break;
+            case gtrsym:
+                emit(OPR, 0, GTR);
+                break;
+            case geqsym
+                emit(OPR, 0, GEQ);
+                break;
+        }
+
+    }
 }
 
 int main()
