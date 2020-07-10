@@ -278,6 +278,9 @@ void block()
                 // this is a new identifier!
                 strcpy( symbolTable[sizeOfSymbolTable].name, currToken.name );
                 symbolTable[sizeOfSymbolTable].kind = 1; // (kind 1 = const)
+                symbolTable[sizeOfSymbolTable].level = 0;
+                symbolTable[sizeOfSymbolTable].mark = 0;
+                symbolTable[sizeOfSymbolTable].address = 0;
             }
 
             // ok now that the table knows the name of this identifier, we update token again
@@ -300,6 +303,10 @@ void block()
             // if it is a digit, we can input our new const's value into the symbol table
             symbolTable[sizeOfSymbolTable].value = currToken.value;
             // there is no level, address, or mark to store in the symbol table for this one so
+            symbolTable[sizeOfSymbolTable].level = 0;
+            symbolTable[sizeOfSymbolTable].mark = 0;
+            symbolTable[sizeOfSymbolTable].address = 0;
+
             // we can just go ahead and officially say the symbol table is bigger
             sizeOfSymbolTable++;
 
@@ -339,6 +346,9 @@ void block()
             symbolTable[sizeOfSymbolTable].address = currAddress;
             currAddress++; // increment current address
             // there is no value to input just yet, there is no level to input, no mark either so
+            symbolTable[sizeOfSymbolTable].level = 0;
+            symbolTable[sizeOfSymbolTable].mark = 0;
+
             // we can officially grow the symbol table
             sizeOfSymbolTable++;
             // we can move on
@@ -707,7 +717,21 @@ void condition()
 
     }
 }
+void printSymbolTable()
+{
+    printf("Symbol Table: \n");
+    for (int i = 1; i < sizeOfSymbolTable; i++)
+    {
+        printf("kind : %d\n", symbolTable[i].kind);
+        printf("name : %s\n", symbolTable[i].name);
+        printf("value : %d\n", symbolTable[i].value);
+        printf("level : %d\n", symbolTable[i].level);
+        printf("address : %d\n", symbolTable[i].address);
+        printf("mark : %d\n", symbolTable[i].mark);
+        printf("\n");
 
+    }
+}
 int main()
 {
     /*
@@ -785,4 +809,5 @@ int main()
     printf("starting token ID: %d\n", currToken.ID);
     block();
 
+    printSymbolTable();
 }
