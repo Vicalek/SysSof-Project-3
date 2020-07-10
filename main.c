@@ -228,7 +228,13 @@ void error(int errorType) // this should probably be the last thing we fill out
             printf("This number is too large.\n");
             break;
         case 27:
-            printf("duplicate identifier name");
+            printf("duplicate identifier name\n");
+            break;
+        case 28:
+            printf("read must be followed by identifier\n");
+            break;
+        case 29:
+            printf("write must be followed by identifier\n");
             break;
         default:
             printf("default error\n");
@@ -362,6 +368,8 @@ void statement()
     // separates types of statements with an OR symbol ("|"). Unlike block() which can enter
     // constant declarations, variable declarations, and a statement at the same time
     int ID = currToken.ID;
+    int cx1, cx2;
+    int checkedTableIndex;
 
     switch (ID)
     {
@@ -369,7 +377,7 @@ void statement()
             // if it is an identifier symbol, check if one with this name exists
             printf("in identsym (in statement) %s\n", currToken.name);
 
-            int checkedTableIndex = checkTable(currToken, 2);
+            checkedTableIndex = checkTable(currToken, 2);
             if (checkedTableIndex == 0) // if checkTable returned a 0, then the identifier doesn't exist
             {
                 error(5); //"const, var, -procedure- must be followed by identifier"
@@ -380,7 +388,7 @@ void statement()
                 error(13); // Assignment to constant or procedure is not allowed.
             }
 
-            // the identifier exists, move on
+            // the identifier exists, we can move on
             getToken();
 
             // the following token must be the becomes symbol (":=")
@@ -389,13 +397,13 @@ void statement()
                 error(14); // Assignment operator expected.
             }
 
-            // if it is the becomes symbol, move on
+            // if it is the becomes symbol, we can move on
             getToken();
 
             // the following *must* be an expression
             expression();
 
-            // emit() here, not sure what goes into it
+            // emit(STO, ,) here, not sure what goes into it
 
             break;
 
@@ -416,9 +424,10 @@ void statement()
 
         case ifsym:
             printf("in ifsym\n");
+            getToken();
             // following "if" we need the condition
             condition();
-            getToken();
+
             // the next token has to be "then"
             if (currToken.ID != thensym)
             {
@@ -428,32 +437,99 @@ void statement()
             getToken();
 
             // we gotta store the current Code index
-            int cx1 = currentCodeIndex; // i *think* "code_index" corresponds with our "currentCodeIndex"?
+            cx1 = currentCodeIndex; // i *think* "code_index" corresponds with our "currentCodeIndex"?
             emit(JPC, 0, 0); // JPC = "Jump to instruction M if top stack element is 0"
 
             // do the statement following "then"
             statement();
 
             //save current code index again because who knows how much the statement() moved it
-            int cx2 = currentCodeIndex;
+            cx2 = currentCodeIndex;
 
             emit(JMP, 0, 0); // jump to instruction 0
             Code[cx1].M = currentCodeIndex;
             // there is no "else" for this project
-            Code[cx2].M;//-----------------------------------------------------------------------------------------
+            Code[cx2].M = currentCodeIndex;
 
             break;
 
         case whilesym:
             printf("in whilesym \n");
+            // -->save jump location for the top<--
+            getToken();
+            condition();
+            // -->save jump location for the end <--
+            emit(JPC, 0,0);
+
+            // the next token must be do
+            if (token.ID != dosym)
+            {
+                error(19);// do expected
+            }
+
+            getToken();
+            statement();
+            emit(JMP, 0, cx1);
+            //code[cx2].m;// = whatever the hell "code_index" is;
             break;
 
         case readsym:
             printf("in readsym\n");
+            getToken();
+
+            // next token must be dentsym
+            if (currToken.ID != identsym)
+            {
+                error(28); // "read must be followed by identifier"
+            }
+
+            // check if the identifier exists a a const or as a var
+            if (checkTable(currToken, 1) == 0 || checkTable(currToken, 2) == 0)
+            {
+                error(12); // "undeclared identifier!"
+            }
+            emit(SIO2, 0, 2); // there are 3 STOs and they're basically seperated by their  M  so that's why there's just a 2 here
+
+            // checks if a const identifier with this name exists
+            checkedTableIndex = checkTable(token, 1);
+            if (checkedTableIndex == 0) // if no const with that name exists, try var
+            {
+                checkedTableIndex = checkTable(token, 2);
+            }
+            // emit(STO, );
+
+            getToken();
             break;
 
         case writesym:
             printf("in writesym\n");
+            getToken();
+
+           // next token *must* be identsym
+            if (currToken.ID != identsym)
+            {
+                error(29); // "write must be followed by identifier"
+            }
+
+            // check if the identifier exists a a const or as a var
+            if (checkTable(currToken, 1) == 0 || checkTable(currToken, 2) == 0)
+            {
+                error(12); // "undeclared identifier!"
+            }
+
+            // checks if a const identifier with this name exists
+            checkedTableIndex = checkTable(token, 1);
+            if (checkedTableIndex != 0) // if it is indeed a const
+            {
+                emit(LIT, 0, currToken.value); // then we can emit it as a literal
+            }
+            else{ // or else it is a var not a cnost
+                emit(LOD, 0, symbolTable[checkTable(token, 2)].address); // maybe the L isnt really a 0 but eeeee
+            }
+
+            // finally update token
+            getToken();
+
             break;
 
         case endsym:
@@ -490,9 +566,16 @@ void expression() // expression are ["+" | "-"] term() {("+" | "-") term()}.
 
     while (currToken.ID == plussym || currToken.ID == minussym)
     {
-        printf("there sure is a plus or a minus here\n");
+        storeSign = currToken.ID;
         getToken();
-        factor();
+        term();
+        if (storeSign == plussym)
+        {
+            emit(OPR, 0, ADD);
+        }
+        else{
+            emit(OPR, 0, SUB);
+        }
 
     }
 
@@ -501,14 +584,15 @@ void expression() // expression are ["+" | "-"] term() {("+" | "-") term()}.
 
 void term()
 {
-    printf("in term\n");
+     printf("in term\n");
+    int saveType; // save if it was multiply or divide
     // terms start with a factor
     factor();
 
     // terms can then have 0 or greater following factors separated by multiplication or division
     while (currToken.ID == slashsym || currToken.ID == multsym) // while multiply or divide
     {
-        int saveType = currToken.ID; // save if it was multiply or divide
+        saveType = currToken.ID;
         getToken();
 
         factor();
@@ -579,7 +663,7 @@ void condition()
     {
         getToken();
         expression();
-        //emit(ODD);
+        //emit(ODD); // some sort of emit here
     }
     else // expression  rel-op  expression
     {
